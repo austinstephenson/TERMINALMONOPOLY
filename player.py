@@ -6,6 +6,7 @@ import socket
 import platform
 import threading
 import utils.networking as net
+import utils.cli as cli
 import utils.screenspace as ss
 import modules_directory.inventory as inv
 
@@ -50,9 +51,9 @@ def banker_check(local: bool = False) -> None:
             return
     current_os = platform.system()
     if(current_os == "Windows"):
-        subprocess.call("start python banker.py -local" if local else "start python banker.py", shell=True)
+        subprocess.call("start python banker.py --local" if local else "start python banker.py", shell=True)
     elif(current_os == "Darwin"):
-        cmd = "python banker.py -local" if local else "python banker.py"
+        cmd = "python banker.py --local" if local else "python banker.py"
         subprocess.run(
             shlex.split(
             f"""osascript -e 'tell app "Terminal" to activate' -e 'tell app "Terminal" to do script "{cmd}" '"""
@@ -67,7 +68,7 @@ def banker_check(local: bool = False) -> None:
         launched = False
         for term in list_of_terms:
             try:
-                subprocess.Popen([term[0], term[1], "bash -c '" + sys.executable + (" banker.py -local'" if local else " banker.py'")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=os.path.dirname(os.path.realpath(__file__)))
+                subprocess.Popen([term[0], term[1], "bash -c '" + sys.executable + (" banker.py --local'" if local else " banker.py'")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=os.path.dirname(os.path.realpath(__file__)))
                 launched = True
                 break
             except FileNotFoundError:
@@ -79,7 +80,7 @@ def banker_check(local: bool = False) -> None:
             if(term != "" and ' ' in term):
                 try:
                     term = term.split(" ")
-                    subprocess.Popen([term[0], term[1], "bash -c '" + sys.executable + (" banker.py -local'" if local else " banker.py'")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=os.path.dirname(os.path.realpath(__file__)))
+                    subprocess.Popen([term[0], term[1], "bash -c '" + sys.executable + (" banker.py --local'" if local else " banker.py'")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=os.path.dirname(os.path.realpath(__file__)))
                 except:
                     print("Invalid command! Try running 'python banker.py' directly")
             else:
@@ -118,17 +119,16 @@ def initialize(debug: bool = False, args: list = None) -> None:
                 print("The input name was not valid")
                 name = input("Player name: ")
         
-        if "localhost" not in sys.argv:
+        ADDRESS = input("Enter Host IP: ").strip()
+        while not validate_address(ADDRESS):
+            print("Invalid IP address. Please enter a valid IP address.")
             ADDRESS = input("Enter Host IP: ").strip()
-            while not validate_address(ADDRESS):
-                print("Invalid IP address. Please enter a valid IP address.")
-                ADDRESS = input("Enter Host IP: ").strip()
 
+        PORT = input("Enter Host Port: ")
+        # Validate IP address and port
+        while not validate_port(PORT):
+            print("Invalid port. Please enter a valid port.")
             PORT = input("Enter Host Port: ")
-            # Validate IP address and port
-            while not validate_port(PORT):
-                print("Invalid port. Please enter a valid port.")
-                PORT = input("Enter Host Port: ")
 
 
         print(f"Welcome, {name}!")
@@ -518,26 +518,24 @@ if __name__ == "__main__":
     """
     Main driver function for player.
     """
-    if "-withnet" in sys.argv:
+    cli_args = cli.parse_player_args() # Handles --help and validates --connect before anything else runs
+
+    if cli_args.withnet:
         NET_COMMANDS_ENABLED = True
     
-    if "-local" in sys.argv:
+    if cli_args.local:
         initialize(True, ["Player", "localhost", "33333"])
-    elif(len(sys.argv) == 1 or sys.argv[1] != "-debug"):
+    elif cli_args.connect: # Debug mode, with args (name, ip, port)
+        name, ip, port = cli_args.connect
+        initialize(True, [name, ip, port])
+        ss.DEBUG = True
+    elif cli_args.debug:
+        ss.DEBUG = True
+    else:
         initialize()
         ss.make_fullscreen()
-    elif sys.argv[1] == "-debug":
-        ss.DEBUG = True
 
-    if(len(sys.argv) >= 5): # Debug mode, with args (name, ip, port)
-        if sys.argv[3].count('.') == 3 and all(part.isdigit() and 0 <= int(part) <= 255 for part in sys.argv[3].split('.')):
-            initialize(True, [sys.argv[2], sys.argv[3], sys.argv[4]])
-            ss.DEBUG = True
-        else:
-            print("Invalid IP address format. Please use the format xxx.xxx.xxx.xxx")
-            sys.exit(1)    
-
-    if not "-skipcalib" in sys.argv:
+    if not cli_args.skipcalib:
         ss.make_fullscreen()
         ss.auto_calibrate_screen()
         ss.calibrate_screen("player")
@@ -548,7 +546,7 @@ if __name__ == "__main__":
     ss.initialize_terminals(TERMINALS)
     ss.update_terminal(active_terminal.index, active_terminal.index)
 
-    if "-debug" in sys.argv:
+    if cli_args.debug:
         for i in range(ss.HEIGHT + 10):
             ss.set_cursor(155, i)
             print(i)

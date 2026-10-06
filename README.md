@@ -63,6 +63,28 @@ Ensure you have the following installed:
 - Player will take turns rolling dice, moving across the board, and choosing whether or not to buy a property.
 - Each play can see the gameboard in real time, and the banker will oversee the purchasing of property and rent payments
 
+# Command-Line Options
+Both scripts use Python's `argparse`, so you can run either one with `-h` / `--help` to see every option.
+
+**Banker** (`python banker.py [options] [TEST]`)
+- `--local`: play on localhost using port 33333 (no IP/port prompts)
+- `--skipcalib`: skip screen calibration
+- `--silent`: hide output in the output areas (e.g. for tournament games)
+- `--debtok`: allow players to go into debt
+- `--stayopen`: keep the receiver open after all players disconnect
+- `TEST`: optional unit test number (see `set_unittest` in `banker.py`). You are prompted for one if it is omitted.
+
+**Player** (`python player.py [options]`)
+- `--local`: connect to a banker running on localhost port 33333
+- `--skipcalib`: skip screen calibration
+- `--withnet`: enable network commands
+- `--debug`: enable debug mode
+- `--connect NAME IP PORT`: skip the prompts and connect straight to a banker (implies debug mode)
+
+The older single-dash spellings (for example `-local`) still work.
+
+Parser tests live in `tests/`: run `python -m unittest tests.test_cli -v` from the repository root.
+
 # How the Game Works
 - Player Class: represents each player in the game and tracks player's cash, balance, owned properties, location, jail status. 
 - Board Class: Handles the game board, managing properties, whether a property is owned or mortgaged, and player locations. This class uses an internal dictionary to store information regarding price, rents, and whethere someone owns a property.

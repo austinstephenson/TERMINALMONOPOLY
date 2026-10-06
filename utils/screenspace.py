@@ -20,7 +20,7 @@ global rows, cols
 rows = HEIGHT//2
 cols = WIDTH//2
 DEBUG = False
-VERBOSE = True # Set to True to see all output in the output areas. If the user does not need to see the output (any privacy concerns or in a tournament game), set to False via -silent sys.argv.
+VERBOSE = True # Set to True to see all output in the output areas. If the user does not need to see the output (any privacy concerns or in a tournament game), set to False via the --silent flag (python banker.py --silent).
 
 class OutputArea:
     def __init__(self, name: str, coordinates: tuple, max_length: int, max_lines: int):

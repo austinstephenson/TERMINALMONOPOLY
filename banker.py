@@ -24,6 +24,7 @@ import select
 import utils.screenspace as ss 
 from utils.screenspace import MYCOLORS as COLORS, print_w_dots, choose_colorset, Main_Output, Monopoly_Game_Output, Casino_Output # specific imports, helpful on their own
 import utils.networking as net
+import utils.cli as cli
 from utils.utils import Client, validate_port, is_port_unused, loading_animation
 # Modules
 import modules_directory.inventory as inv
@@ -55,6 +56,8 @@ play_monopoly = True
 monopoly_unit_test = 6 # assume 1 player, 2 owned properties. See monopoly.py unittest for more options
 messages = []
 DEBT_OK = False
+LOCAL = False # Set from --local in __main__. Play on localhost:33333 instead of prompting for a port
+STAY_OPEN = False # Set from --stayopen in __main__. Keep the receiver open after all clients drop
 
 def add_to_output_area(output_type: str, text: str, color: str = COLORS.WHITE) -> None:
     """
@@ -91,7 +94,7 @@ def start_server() -> socket.socket:
     # Create a socket object
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    if "-local" in sys.argv:
+    if LOCAL:
         ip_address = "localhost"
         host = "localhost"
         port = 33333
@@ -153,7 +156,7 @@ def receiver_loop(port:int, is_oof_thread: bool = False) -> None:
     with socket.socket() as server:
         host = socket.gethostname()
         ip_address = socket.gethostbyname(host)
-        if "-local" in sys.argv:
+        if LOCAL:
             ip_address = "localhost"
             port = 33333
         if is_oof_thread:
@@ -193,7 +196,7 @@ def receiver_loop(port:int, is_oof_thread: bool = False) -> None:
                     #     to_read.remove(reader) # remove from monitoring
                 if(len(to_read) == 1):
                     if not is_oof_thread:
-                        if "-stayopen" not in sys.argv:
+                        if not STAY_OPEN:
                             add_to_output_area("Main", "All connections dropped. Receiver stopped.", COLORS.GREEN)
                             return
                         else:
@@ -202,12 +205,13 @@ def receiver_loop(port:int, is_oof_thread: bool = False) -> None:
                             server_socket.close()
                             start_server()
 
-def set_unittest() -> None:
+def set_unittest(test: int = None) -> None:
     """
     Unit test function for the Banker module.
     Add here as you think of more tests.
 
-    Parameters: None
+    Parameters: test (int) - unit test number, usually passed on the command line (python banker.py 3).
+    If None, the user is prompted to enter one.
 
     Returns: None
     """
@@ -261,12 +265,7 @@ def set_unittest() -> None:
     - No games added to the game manager.
           """ if ss.VERBOSE else "")
     
-    if len(sys.argv) > 1:
-        if sys.argv[1].isdigit(): # If a test number is provided as a command line argument
-            test = int(sys.argv[1])
-        else:
-            test = ss.get_valid_int("Enter a test number: ", allowed=[' '])
-    else: # If no command line argument is provided, ask for a test number
+    if test is None: # If no test number was provided on the command line, ask for one
         test = ss.get_valid_int("Enter a test number: ", allowed=[' '])
     if test == "":
         play_monopoly = False
@@ -752,19 +751,21 @@ def handle_loan(data: str, client_socket: socket.socket, change_balance: callabl
 
 if __name__ == "__main__":
 
+    cli_args = cli.parse_banker_args() # Parse first so --help and usage errors appear before the screen is cleared
+    LOCAL = cli_args.local
+    STAY_OPEN = cli_args.stayopen
+    DEBT_OK = cli_args.debtok
+
     os.system('cls' if os.name == 'nt' else 'clear')
     print("Welcome to Terminal Monopoly, Banker!")
 
-    if "-skipcalib" not in sys.argv and "-local" not in sys.argv:
+    if not cli_args.skipcalib and not cli_args.local:
         ss.calibrate_screen('banker')
 
-    if "-silent" in sys.argv:
+    if cli_args.silent:
         ss.VERBOSE = False
 
-    if "-debtok" in sys.argv:
-        DEBT_OK = True
-
-    set_unittest() 
+    set_unittest(cli_args.test)
     # set_gamerules()
     start_server()
     choose_colorset("DEFAULT_COLORS")
